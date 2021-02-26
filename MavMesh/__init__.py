@@ -1,28 +1,49 @@
 from pymavlink import mavutil
 import threading
 import time
+mavlink = mavutil.mavlink
 
 class MavMesh(object):
 
     def __init__(self, device):
-        self.mav = mavutil.mavlink_connection('0.0.0.0:14552')
+        self.mav = mavutil.mavlink_connection(
+                device,
+                autoreconnect=True,
+                force_connected=True,
+                source_system = 0,
+                source_component = 0,
+                )
+        self._exit = False
 
     def run(self):
+        print("Connecting to vehicle...")
         self.mav.wait_heartbeat()
-        print("vehicle connected")
+        self.mode_mapping = self.mav.mode_mapping()
+        print("Vehicle connected")
         self.receive_thread = threading.Thread(target=self.receive_loop, args=())
         self.receive_thread.start()
 
     def exit(self):
+        self._exit = True
         self.receive_thread.join()
 
     def receive_loop(self):
-        while True:
+        last_heartbeat = time.time()
+        while not self._exit:
             msg = self.mav.recv_msg()
+            if msg:
+                pass
+            if time.time() - last_heartbeat > 0.2:
+                #  self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
+                                            #  mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+                                            #  0,
+                                            #  0,
+                                            #  0)
+                last_heartbeat = time.time()
 
     @property
     def location(self):
-        return master.mav.location()
+        return self.mav.location()
 
     @property
     def current_vehicle_id(self):
@@ -33,7 +54,8 @@ class MavMesh(object):
         return self.mav.flightmode
 
     def set_mode(self, name):
-        self.mav.set_mode(name)
+        mode = self.mode_mapping[name]
+        self.mav.set_mode_apm(mode)
 
     @property
     def is_armed(self):
@@ -47,18 +69,30 @@ class MavMesh(object):
 
     def select_vehicle(self, id):
         print(f"select vehicle {id}")
-        self.mav.sysid = id
+        self.mav.target_system = id
 
     def enter_broadcast_mode(self):
         print("entering broadcast mode...")
         self.mav.sysid = 0
 
+    def send(self, msg):
+        self.mav.mav.send(msg)
+
+    def send_takeoff_command(self, altitude):
+        self.mav.mav.command_long_send(self.mav.sysid, 0, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, altitude)
+
+    def send_ned_command(self, north, east, down):
+        self.mav.mav.set_position_target_local_ned_send(0, self.mav.sysid, 0, mavutil.mavlink.MAV_FRAME_LOCAL_NED, 0b0000111111111000, north, east, down, 0, 0, 0, 0, 0, 0, 0, 0)
+
+    def select_broadcast_mode_mapping_copter(self):
+        map = mavutil.mode_mapping_acm
+        inv_map = dict((a, b) for (b, a) in map.items())
+        self.mode_mapping = inv_map
+
     def takeoff(self, altitude):
-        self.set_mode("GUIDED")
-        time.sleep(0.1)
         self.mav.arducopter_arm()
         time.sleep(0.1)
-        self.mav.mav.command_long_send(self.mav.sysid, 0, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, altitude)
+        self.send_takeoff_command(altitude)
 
     def rtl(self):
         self.set_mode("RTL")
