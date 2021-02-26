@@ -34,11 +34,11 @@ class MavMesh(object):
             if msg:
                 pass
             if time.time() - last_heartbeat > 0.2:
-                #  self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
-                                            #  mavutil.mavlink.MAV_AUTOPILOT_INVALID,
-                                            #  0,
-                                            #  0,
-                                            #  0)
+                self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
+                                            mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+                                            0,
+                                            0,
+                                            0)
                 last_heartbeat = time.time()
 
     @property
