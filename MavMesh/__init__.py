@@ -17,6 +17,7 @@ class MavMesh(object):
 
     def run(self):
         print("Connecting to vehicle...")
+        self.send_heartbeat()
         self.mav.wait_heartbeat()
         self.mode_mapping = self.mav.mode_mapping()
         print("Vehicle connected")
@@ -26,6 +27,13 @@ class MavMesh(object):
     def exit(self):
         self._exit = True
         self.receive_thread.join()
+    
+    def send_heartbeat(self):
+        self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
+                                    mavutil.mavlink.MAV_AUTOPILOT_INVALID,
+                                    0,
+                                    0,
+                                    0)
 
     def receive_loop(self):
         last_heartbeat = time.time()
@@ -34,11 +42,7 @@ class MavMesh(object):
             if msg:
                 pass
             if time.time() - last_heartbeat > 0.2:
-                self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,
-                                            mavutil.mavlink.MAV_AUTOPILOT_INVALID,
-                                            0,
-                                            0,
-                                            0)
+                self.send_heartbeat()
                 last_heartbeat = time.time()
 
     @property
