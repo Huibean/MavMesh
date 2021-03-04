@@ -40,7 +40,7 @@ class MavMesh(object):
         last_heartbeat = time.time()
         interesting_messages = list(callbacks.keys())
         while not self._exit:
-            msg = self.mav.recv_match(type=interesting_messages, timeout=1, blocking=True)
+            msg = self.mav.recv_match(type=interesting_messages, timeout=0.01, blocking=True)
             if msg:
                 callbacks[msg.get_type()](msg)
 
