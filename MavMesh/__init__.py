@@ -15,13 +15,13 @@ class MavMesh(object):
                 )
         self._exit = False
 
-    def run(self):
+    def run(self, callbacks={}):
         print("Connecting to vehicle...")
         self.send_heartbeat()
         self.mav.wait_heartbeat()
         self.mode_mapping = self.mav.mode_mapping()
         print("Vehicle connected")
-        self.receive_thread = threading.Thread(target=self.receive_loop, args=())
+        self.receive_thread = threading.Thread(target=self.receive_loop, args=(callbacks,))
         self.receive_thread.start()
 
     def exit(self):
@@ -35,12 +35,15 @@ class MavMesh(object):
                                     0,
                                     0)
 
-    def receive_loop(self):
+    def receive_loop(self, callbacks):
+        print("callbacks:", callbacks)
         last_heartbeat = time.time()
+        interesting_messages = list(callbacks.keys())
         while not self._exit:
-            msg = self.mav.recv_msg()
+            msg = self.mav.recv_match(type=interesting_messages, timeout=1, blocking=True)
             if msg:
-                pass
+                callbacks[msg.get_type()](msg)
+
             if time.time() - last_heartbeat > 0.2:
                 self.send_heartbeat()
                 last_heartbeat = time.time()
